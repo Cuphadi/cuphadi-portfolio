@@ -172,8 +172,9 @@ const EnhancedBackground = ({ cursorPosition }: { cursorPosition: { x: number; y
         orbitAngle: number;
         centerX: number;
         centerY: number;
-        cluster: string;
-        symbolAngle: number;
+        type: 'dot' | 'line' | 'circle';
+        life: number;
+        maxLife: number;
     }[]>([]);
 
     const gradientRef = useRef<{
@@ -233,102 +234,39 @@ const EnhancedBackground = ({ cursorPosition }: { cursorPosition: { x: number; y
         const ctx = canvas.getContext('2d');
         if (!ctx) return;
 
-        const particleCount = 36; // Reduced further for clearer patterns
-        const clusters = [
-            {
-                name: 'ai',
-                center: { x: window.innerWidth * 0.25, y: window.innerHeight * 0.3 },
-                symbolPoints: [
-                    // Neural network - clear hexagonal pattern
-                    [0, -30],    // Top node
-                    [26, -15],   // Top right node
-                    [26, 15],    // Bottom right node
-                    [0, 30],     // Bottom node
-                    [-26, 15],   // Bottom left node
-                    [-26, -15],  // Top left node
-                    // Central node and connections
-                    [0, 0],      // Center node
-                    [13, -7.5],  // Top right connection
-                    [13, 7.5],   // Bottom right connection
-                    [-13, 7.5],  // Bottom left connection
-                    [-13, -7.5], // Top left connection
-                    [0, -15]     // Top connection
-                ]
-            },
-            {
-                name: 'education',
-                center: { x: window.innerWidth * 0.75, y: window.innerHeight * 0.3 },
-                symbolPoints: [
-                    // Graduation cap - clear mortarboard shape
-                    [-25, 0],   // Left base
-                    [25, 0],    // Right base
-                    [0, -35],   // Top point
-                    [-20, -10], // Left top
-                    [20, -10],  // Right top
-                    [0, 0],     // Center
-                    [-15, -5],  // Left middle
-                    [15, -5],   // Right middle
-                    [0, -20],   // Top middle
-                    [-10, -25], // Top left
-                    [10, -25],  // Top right
-                    [0, 10]     // Tassel
-                ]
-            },
-            {
-                name: 'voice',
-                center: { x: window.innerWidth * 0.5, y: window.innerHeight * 0.7 },
-                symbolPoints: [
-                    // Microphone and sound waves
-                    [0, -20],    // Mic top
-                    [0, 20],     // Mic bottom
-                    [-10, -10],  // Mic left
-                    [10, -10],   // Mic right
-                    [-20, 0],    // Wave left
-                    [20, 0],     // Wave right
-                    [-30, -15],  // Outer wave left top
-                    [-30, 15],   // Outer wave left bottom
-                    [30, -15],   // Outer wave right top
-                    [30, 15],    // Outer wave right bottom
-                    [0, 0],      // Center
-                    [0, -5]      // Mic detail
-                ]
-            }
-        ];
+        const particleCount = 100;
+        const types = ['dot', 'line', 'circle'] as const;
 
         const resizeCanvas = () => {
             if (canvas) {
                 canvas.width = window.innerWidth;
                 canvas.height = window.innerHeight;
-                // Update cluster centers on resize
-                clusters[0].center = { x: window.innerWidth * 0.25, y: window.innerHeight * 0.3 };
-                clusters[1].center = { x: window.innerWidth * 0.75, y: window.innerHeight * 0.3 };
-                clusters[2].center = { x: window.innerWidth * 0.5, y: window.innerHeight * 0.7 };
             }
         };
 
         resizeCanvas();
         window.addEventListener('resize', resizeCanvas);
 
-        // Initialize particles with more precise positioning
+        // Initialize particles with more variety
         if (particlesRef.current.length === 0) {
             for (let i = 0; i < particleCount; i++) {
-                const cluster = clusters[Math.floor(i / (particleCount / clusters.length))];
-                const symbolPoint = cluster.symbolPoints[i % cluster.symbolPoints.length];
+                const type = types[Math.floor(Math.random() * types.length)];
                 particlesRef.current.push({
-                    x: cluster.center.x + symbolPoint[0],
-                    y: cluster.center.y + symbolPoint[1],
-                    size: 2.5, // Fixed size for uniformity
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height,
+                    size: type === 'dot' ? 2 : type === 'line' ? 1 : 3,
                     color: `hsl(${Math.random() * 60 + 220}, 70%, 50%)`,
-                    opacity: 0.4, // Fixed opacity for consistency
-                    speed: 0.05 + Math.random() * 0.1, // Very slow movement
+                    opacity: 0.4,
+                    speed: 0.05 + Math.random() * 0.1,
                     angle: Math.random() * Math.PI * 2,
-                    spin: (Math.random() - 0.5) * 0.005, // Very subtle spin
-                    orbitRadius: 5, // Fixed small orbit
-                    orbitAngle: Math.atan2(symbolPoint[1], symbolPoint[0]),
-                    centerX: cluster.center.x + symbolPoint[0],
-                    centerY: cluster.center.y + symbolPoint[1],
-                    cluster: cluster.name,
-                    symbolAngle: 0
+                    spin: (Math.random() - 0.5) * 0.005,
+                    orbitRadius: 5 + Math.random() * 20,
+                    orbitAngle: Math.random() * Math.PI * 2,
+                    centerX: Math.random() * canvas.width,
+                    centerY: Math.random() * canvas.height,
+                    type,
+                    life: Math.random() * 100,
+                    maxLife: 100 + Math.random() * 200
                 });
             }
         }
@@ -344,15 +282,11 @@ const EnhancedBackground = ({ cursorPosition }: { cursorPosition: { x: number; y
                 currentSchemeIndex
             } = gradientRef.current;
 
-            // If we're not transitioning, increment hold counter
             if (!isTransitioning) {
                 gradientRef.current.holdCounter++;
                 
-                // After holding for 5 seconds (300 frames), prepare for transition
                 if (holdCounter >= 300) {
-                    // Only start transition if we have different target colors
                     if (!isTransitioning) {
-                        // Calculate next color scheme index
                         const nextIndex = (currentSchemeIndex + 1) % colorSchemes.length;
                         gradientRef.current.nextColors = colorSchemes[nextIndex];
                         gradientRef.current.isTransitioning = true;
@@ -362,11 +296,9 @@ const EnhancedBackground = ({ cursorPosition }: { cursorPosition: { x: number; y
                 return currentColors;
             }
 
-            // Handle transition
-            gradientRef.current.transitionProgress += 0.0001; // Very slow transition
+            gradientRef.current.transitionProgress += 0.00001; // Much slower transition
 
             if (transitionProgress >= 1) {
-                // Transition complete
                 gradientRef.current.currentColors = [...targetColors];
                 gradientRef.current.targetColors = [...nextColors];
                 gradientRef.current.isTransitioning = false;
@@ -375,19 +307,14 @@ const EnhancedBackground = ({ cursorPosition }: { cursorPosition: { x: number; y
                 return currentColors;
             }
 
-            // Smooth easing function
             const easedProgress = transitionProgress < 0.5
                 ? 4 * transitionProgress * transitionProgress * transitionProgress
                 : 1 - Math.pow(-2 * transitionProgress + 2, 3) / 2;
 
-            // Interpolate colors
             return currentColors.map((current, i) => {
                 const target = targetColors[i];
-                
-                // Handle hue interpolation specially to avoid sudden changes
                 let hueDiff = target.h - current.h;
                 
-                // Ensure we take the shortest path around the color wheel
                 if (Math.abs(hueDiff) > 180) {
                     hueDiff = hueDiff > 0 ? hueDiff - 360 : hueDiff + 360;
                 }
@@ -433,63 +360,82 @@ const EnhancedBackground = ({ cursorPosition }: { cursorPosition: { x: number; y
             }
         };
 
-        const animate = (time: number) => {
-            if (!ctx || !canvas) return;
-
-            drawGradientBackground();
-            drawWaveEffect(time);
-
+        const drawParticles = (time: number) => {
             particlesRef.current.forEach(p => {
-                // Very limited movement
-                const maxOffset = 5; // Reduced from 10
-                p.symbolAngle += p.spin;
-                
-                // Subtle movement around fixed points
-                const symbolX = Math.cos(p.symbolAngle) * maxOffset;
-                const symbolY = Math.sin(p.symbolAngle) * maxOffset;
-                p.x = p.centerX + symbolX;
-                p.y = p.centerY + symbolY;
+                p.life += 0.5;
+                if (p.life > p.maxLife) {
+                    p.life = 0;
+                    p.x = Math.random() * canvas.width;
+                    p.y = Math.random() * canvas.height;
+                }
+
+                const lifeRatio = p.life / p.maxLife;
+                const opacity = Math.sin(lifeRatio * Math.PI) * p.opacity;
 
                 // Gentle cursor interaction
                 const dx = cursorPosition.x - p.x;
                 const dy = cursorPosition.y - p.y;
                 const distance = Math.sqrt(dx * dx + dy * dy);
 
-                if (distance < 80) { // Reduced interaction radius
-                    const force = (80 - distance) / 3000; // Very gentle force
+                if (distance < 150) {
+                    const force = (150 - distance) / 3000;
                     p.x -= dx * force;
                     p.y -= dy * force;
                 }
 
-                // Draw particle
-                const colors = updateGradientColors();
-                const baseColor = colors[clusters.findIndex(c => c.name === p.cluster)];
-                const gradient = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size * 2);
-                gradient.addColorStop(0, `hsla(${baseColor.h}, ${baseColor.s}%, 50%, ${p.opacity})`);
-                gradient.addColorStop(1, 'rgba(0,0,0,0)');
-
+                // Draw based on particle type
                 ctx.beginPath();
-                ctx.arc(p.x, p.y, p.size * 2, 0, Math.PI * 2);
-                ctx.fillStyle = gradient;
+                const colors = updateGradientColors();
+                const baseColor = colors[Math.floor(Math.random() * colors.length)];
+                
+                switch (p.type) {
+                    case 'dot':
+                        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                        ctx.fillStyle = `hsla(${baseColor.h}, ${baseColor.s}%, 50%, ${opacity})`;
                 ctx.fill();
+                        break;
+                    case 'line':
+                        const length = p.size * 10;
+                        ctx.moveTo(p.x - length/2, p.y);
+                        ctx.lineTo(p.x + length/2, p.y);
+                        ctx.strokeStyle = `hsla(${baseColor.h}, ${baseColor.s}%, 50%, ${opacity})`;
+                        ctx.lineWidth = 1;
+                        ctx.stroke();
+                        break;
+                    case 'circle':
+                        ctx.arc(p.x, p.y, p.size * 2, 0, Math.PI * 2);
+                        ctx.strokeStyle = `hsla(${baseColor.h}, ${baseColor.s}%, 50%, ${opacity})`;
+                        ctx.lineWidth = 1;
+                        ctx.stroke();
+                        break;
+                }
 
-                // Draw connecting lines only between adjacent points in the pattern
+                // Draw connecting lines between nearby particles
                 particlesRef.current.forEach(p2 => {
-                    if (p.cluster === p2.cluster) {
+                    if (p !== p2) {
                         const dx = p.x - p2.x;
                         const dy = p.y - p2.y;
                         const distance = Math.sqrt(dx * dx + dy * dy);
 
-                        if (distance < 40) { // Shorter connections
+                        if (distance < 100) {
                             ctx.beginPath();
                             ctx.moveTo(p.x, p.y);
                             ctx.lineTo(p2.x, p2.y);
-                            ctx.strokeStyle = `hsla(${baseColor.h}, ${baseColor.s}%, 50%, ${0.2 * (1 - distance / 40)})`; // Stronger lines
+                            ctx.strokeStyle = `hsla(${baseColor.h}, ${baseColor.s}%, 50%, ${0.1 * (1 - distance / 100)})`;
+                            ctx.lineWidth = 0.5;
                             ctx.stroke();
                         }
                     }
                 });
             });
+        };
+
+        const animate = (time: number) => {
+            if (!ctx || !canvas) return;
+
+            drawGradientBackground();
+            drawWaveEffect(time);
+            drawParticles(time);
 
             animationFrameRef.current = requestAnimationFrame(animate);
         };
@@ -527,10 +473,13 @@ const AboutSection = () => {
 
     const roles = [
         "Data Scientist",
-        "Music Producer",
+        "AI Engineer",
+        "Composer",
         "Game Designer",
         "Educator",
-        "Content Creator"
+        "Content Creator",
+        "Storyteller",
+        "Computer Scientist"
     ];
 
     useEffect(() => {
@@ -596,7 +545,7 @@ const AboutSection = () => {
                         className="mt-4"
                     >
                         <a
-                            href="/Abdulhadi-Ibrahim-Zubailah-FlowCV-Resume-20250420.pdf"
+                            href="/Abdulhadi_Zubailah_CV8.pdf"
                             download
                             className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg bg-gradient-to-r from-purple-500 to-blue-500 text-white font-medium hover:from-purple-600 hover:to-blue-600 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
                         >
@@ -617,7 +566,7 @@ const AboutSection = () => {
                     <img
                         src={abdulhadiImage}
                         alt="Abdulhadi Zubailah"
-                        className="rounded-full shadow-2xl border-4 border-white/20 max-w-[300px] md:max-w-[400px] mix-blend-luminosity hover:mix-blend-normal transition-all duration-300"
+                        className="rounded-full shadow-2xl max-w-[300px] md:max-w-[400px] mix-blend-luminosity hover:mix-blend-normal transition-all duration-300"
                         style={{
                             filter: 'brightness(1.2) contrast(1.1)',
                             backgroundColor: 'transparent',
@@ -632,13 +581,13 @@ const AboutSection = () => {
                     whileInView={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: 50 }}
                     transition={{ duration: 0.8, delay: 0.6 }}
-                    className="text-gray-400 text-base sm:text-lg leading-relaxed"
+                    className="text-gray-400 text-base sm:text-lg leading-relaxed font-sans font-normal tracking-wide"
                 >
                     <p>
                     Hey! I'm Abdulhadi Zubailah, a Computer Science graduate (First Honor!) at your service, and I'm excited about the intersection of tech and creativity. By day, I'm all about teaching and mentoring – diving into data science, AI, data analysis, dashboard development, and sharing my love for all things tech. I'm committed to helping others unlock their potential and build awesome things.
                     </p>
                     <p className="mt-4">
-                    But that's just half the story! When I'm not working with data, I'm exploring my creative side. I produce music, design games, do voice acting, create content, and write stories. I believe in the power of storytelling and design to captivate and inspire. I'm always eager to learn, collaborate, and push the boundaries of what's possible.
+                    But that's just half the story! When I'm not working with data, I'm exploring my creative side. I compose music, design games, do voice acting, create content, and write stories. I believe in the power of storytelling and design to captivate and inspire. I'm always eager to learn, collaborate, and push the boundaries of what's possible.
                     </p>
                 </motion.div>
             </div>
@@ -671,6 +620,8 @@ interface TimelineItem {
     team?: TeamMember[];
     games?: Game[];
     role?: string;
+    videoUrl?: string;
+    course?: string;
 }
 
 const CareerSection = () => {
@@ -678,8 +629,8 @@ const CareerSection = () => {
         {
             title: "Teaching & Learning Technology Associate",
             subtitle: "KFUPM",
-            date: "April 2025 - Present",
-            description: "Full-time position focusing on educational technology integration and development.",
+            date: "May 2025 - Present",
+            description: "My role involves integrating technology to foster innovation across various disciplines, designing workshops, mentoring students, and supporting the Deanship's academic development initiatives.",
             icon: <Users className="w-5 h-5 text-blue-400" />,
             side: "left",
             type: "Full-time"
@@ -687,8 +638,8 @@ const CareerSection = () => {
         {
             title: "Associate IT System Analyst",
             subtitle: "Aramco UD&CSD",
-            date: "February 2025 - April 2025",
-            description: "Developed AI-powered solutions including Python-based LLM architecture, chatbots, and camera-based applications with face-tracking capabilities.",
+            date: "January 2025 - April 2025",
+            description: "Developed AI solutions using Python, including LLM function calling and agentic AI architectures, chatbots (FastAPI, OpenShift deployment), and camera-based applications with face-tracking (MediaPipe or similar), within an Agile/Scrum framework using Azure DevOps.",
             icon: <BrainCircuit className="w-5 h-5 text-green-400" />,
             side: "left",
             type: "Full-time"
@@ -697,7 +648,7 @@ const CareerSection = () => {
             title: "Teaching Assistant",
             subtitle: "KAUST Academy",
             date: "November 2024 - Present",
-            description: "Teaching advanced AI concepts to 100+ students, providing hands-on guidance and support, with exceptional student feedback.",
+            description: "Led AI labs for 100+ students, providing hands-on instruction and comprehensive support, including grading and mentorship, with excellent student feedback (9+/10).",
             icon: <Users className="w-5 h-5 text-purple-400" />,
             side: "left",
             type: "Seasonal"
@@ -706,7 +657,8 @@ const CareerSection = () => {
             title: "Data Scientist",
             subtitle: "Mozn",
             date: "December 2024 - January 2025",
-            description: "Built knowledge graphs using Neo4j and developed ETL processes for unstructured data analysis.",
+            description: "Engineered a knowledge graph-based recommendation engine, utilizing Neo4j, Hugging Face embeddings, and ETL pipelines for PDF data extraction."
+,
             icon: <BrainCircuit className="w-5 h-5 text-yellow-400" />,
             side: "left",
             type: "Full-time"
@@ -715,7 +667,7 @@ const CareerSection = () => {
             title: "Instructor",
             subtitle: "Shaguf",
             date: "August 2022 - September 2024",
-            description: "Created and taught Python & C programming courses, achieving high student satisfaction ratings.",
+            description: "Created and taught Python & C programming course and a math course, achieving high student satisfaction ratings.",
             icon: <Users className="w-5 h-5 text-orange-400" />,
             side: "left",
             type: "Seasonal"
@@ -724,7 +676,7 @@ const CareerSection = () => {
             title: "Teaching Assistant",
             subtitle: "KFUPM",
             date: "February 2022 - May 2024",
-            description: "Taught programming labs, developed course materials, and provided academic support in Digital Logic Design & Python.",
+            description: "Worked as Lab Instructor, graded assignments, and provided academic support in Digital Logic Design & Python subjects.",
             icon: <Users className="w-5 h-5 text-red-400" />,
             side: "left",
             type: "Part-time"
@@ -733,16 +685,16 @@ const CareerSection = () => {
             title: "Engineering Intern",
             subtitle: "Baker Hughes DTC",
             date: "June 2023 - August 2023",
-            description: "Developed NLP and Data Science solutions, including interactive Streamlit dashboards for AI model visualization.",
+            description: "Developed NLP and Data Science solutions, including interactive Streamlit dashboards for AI model showcasing & data visualization, and the creation of a management system.",
             icon: <BrainCircuit className="w-5 h-5 text-indigo-400" />,
             side: "left",
             type: "Full-time"
         },
         {
             title: "AI Summer Program",
-            subtitle: "King Abdullah University of Science and Technology (KAUST)",
+            subtitle: "KAUST Academy",
             date: "June 2024 - August 2024",
-            description: "Selected among 200 participants from 10,000+ applicants. Studied advanced AI topics including Reinforcement Learning and Generative AI.",
+            description: "As one of 200 participants selected for the KAUST AI Summer Program from 10,000+ applicants, I studied and applied advanced AI topics, including Reinforcement Learning, Generative AI, and NLP, and contributed to a project that developed autonomous UAV swarms using Reinforcement Learning to combat wildfires.",
             icon: <GraduationCap className="w-5 h-5 text-blue-400" />,
             side: "right"
         },
@@ -750,7 +702,7 @@ const CareerSection = () => {
             title: "Bachelor of Science in Computer Science",
             subtitle: "King Fahd University of Petroleum and Minerals (KFUPM)",
             date: "2019 - 2024",
-            description: "Graduated with a 3.944/4.000 GPA. Five-time 1st Honor Distinction recipient. Specialized in AI, ML, Data Science, and Game Programming.",
+            description: "Obtained a Bachelor of Science in Computer Science from KFUPM, graduating with a GPA of 3.944/4.000 and awarded First Honor Distinction 5 times. Key coursework included Mathematics (Calculus, Linear Algebra, Statistics, Discrete Math) and major Computer Science subjects such as Object-Oriented Programming, Data Structures, Algorithms, AI, Computer Graphics, and Game Programming.",
             icon: <GraduationCap className="w-5 h-5 text-green-400" />,
             side: "right"
         },
@@ -758,7 +710,7 @@ const CareerSection = () => {
             title: "The Global Researcher Program",
             subtitle: "Duke Summer Academy",
             date: "2018",
-            description: "Participated in an intensive research program at Duke University.",
+            description: "Participated in Duke University's three-week Summer Academy (Global Researcher program), an elite program focused on providing academically motivated students from around the world with an international academic and residential experience to foster a global perspective.",
             icon: <GraduationCap className="w-5 h-5 text-purple-400" />,
             side: "right"
         }
@@ -771,21 +723,21 @@ const CareerSection = () => {
             title: "KFUPM Google Club",
             subtitle: "Technical Member",
             date: "September 2023 - May 2024",
-            description: "Led workshops on Data Science tools like Streamlit and mentored students in AI bootcamps.",
+            description: "As a Technical Member, I developed and delivered workshops on modern Data Science, AI, and Game Design tools (e.g., Streamlit) and served as a mentor and organizer for related Data Science and AI bootcamps, providing guidance and support to participants.",
             icon: <Code className="w-5 h-5 text-blue-400" />
         },
         {
             title: "KFUPM IE Club",
             subtitle: "Head of Modern Games & Various Roles",
             date: "September 2019 - May 2024",
-            description: "Led 20+ member team, organized 50+ gaming events, managed finances, and received Years of Service Honor. Served in multiple roles including Head of Modern Games and Event Supervisor.",
+            description: "During my 5-year involvement with the KFUPM IE Club, I served in leadership roles including Head of Modern Games and Event Supervisor, where I led teams to organize 50+ large-scale gaming events (tournaments, workshops, game development sessions, board game design workshops), directed financial decisions, revitalized club engagement through innovative formats, and received a 'Years of Service Honor.'",
             icon: <Gamepad2 className="w-5 h-5 text-purple-400" />
         },
         {
             title: "KFUPM Computer Club",
             subtitle: "Academic Division Member",
             date: "October 2022 - July 2023",
-            description: "Conducted CS help sessions and developed a Course Evaluation system using Notion for optimizing study strategies.",
+            description: "Contributed to the KFUPM Computer Club Academic Division by conducting 5+ help sessions on computer science subjects to aid in exam preparation and developing a Course Evaluation page using Notion to gather insights for optimal course preparation strategies.",
             icon: <Terminal className="w-5 h-5 text-green-400" />
         }
     ];
@@ -966,7 +918,7 @@ const ProjectsSection = () => {
 My role as the Sound Engineer & Music Producer was crucial in creating immersive audio experiences for each game. I composed original soundtracks, designed sound effects, and implemented audio systems that enhanced the gameplay experience. Beyond my primary role, I actively contributed to the creative process, participating in brainstorming sessions and helping shape the core concepts of our games.
 
 Our team's dedication and collaborative spirit led us to achieve 3rd place in the competition, a testament to our hard work and innovative approach to game development.`,
-            role: "Sound Engineer, Music Producer & Game Designer",
+            role: "Sound Engineer, Music Composer & Game Designer",
             technologies: ["Unity", "Ableton Live", "Audacity"],
             team: [
                 { name: "Hebah Alshawarib", role: "Artist/UI", twitter: "https://twitter.com/iMono3_", linkedin: "https://www.linkedin.com/in/hebahalshawarib/" },
@@ -984,19 +936,31 @@ Our team's dedication and collaborative spirit led us to achieve 3rd place in th
             date: "Feb 2023 - Jul 2023"
         },
         {
-            title: "Game 2: Puzzle Masters",
-            description: "A cooperative puzzle game for two players.",
-            role: "Gameplay Programmer",
-            technologies: ["Unreal Engine", "C++", "Blender"],
-            imageUrl: "https://via.placeholder.com/400x300?text=Puzzle+Masters", // Placeholder
-        },
-        // Add more games
+            title: "Death Well Told",
+            description: `"Death Well Told" was an educational project developed as part of the SWE 302 Game Programming course, where our primary goal was to learn and apply game development principles in a practical setting.
+
+The game is a turn-based experience set in purgatory, where souls face each other in a deadly game of Russian roulette devised by Death. Players must strategically use a revolver with mixed blank and real bullets, along with various items that can help or hinder them, creating an atmosphere of tension and psychological warfare.
+
+As a learning project, it allowed me to explore multiple aspects of game development. In my roles as Game Designer, Voice Actor, Music Composer, and Narrative Director, I learned how to craft compelling game mechanics, create immersive audio experiences, and develop engaging narratives. The project was particularly valuable in understanding how different elements of game design work together to create a cohesive player experience.
+
+While we may consider expanding it into a full commercial game in the future, its primary value was as a hands-on learning experience in game development, storytelling, and team collaboration.`,
+            role: "Game Designer, Voice Actor, Music Composer & Narrative Director",
+            technologies: ["Unity", "Ableton Live", "Audacity"],
+            team: [
+                { name: "Hadi Alsinan", role: "Game Tester", twitter: "https://twitter.com/placeholder", linkedin: "https://www.linkedin.com/in/hadi-alsinan/" },
+                { name: "Ali Alabdulaal", role: "3D Artist", twitter: "https://twitter.com/placeholder", linkedin: "https://www.linkedin.com/in/ali-alabdulaal-a1b256240/" },
+                { name: "Abdullah Alshomali", role: "Programmer", twitter: "https://twitter.com/placeholder", linkedin: "https://www.linkedin.com/in/abdullah-alshomli/" }
+            ],
+            videoUrl: "https://www.youtube.com/watch?v=yGP1yzB-cvI",
+            date: "Feb 2024 - Apr 2024",
+            course: "SWE 302 - Game Programming"
+        }
     ];
 
     const educatorProjects = [
         {
             title: "YouTube Channel: Algorithmatics",
-            description: "A channel that explains Computer Science & Math concepts with animation and in Arabic!",
+            description: "A channel that explains Computer Science & Math concepts with animation and in Arabic! (Coming soon...)",
             youtubeChannelUrl: "https://www.youtube.com/embed/UCoK23FYfa5r-3j8dJMZj9iQ?si=YOUR_PLAYLIST_ID", // Replace CHANNEL_ID
         },
         {
@@ -1022,20 +986,49 @@ Our team's dedication and collaborative spirit led us to achieve 3rd place in th
         }
     ];
 
-    const dataScienceProjects = [
+    interface TechProject {
+        title: string;
+        description: string;
+        technologies: string[];
+        imageUrl?: string;
+        videoUrl?: string;
+        team?: TeamMember[];
+        date?: string;
+        place?: string;
+    }
+
+    const techProjects: TechProject[] = [
         {
-            title: "Project 1: Customer Churn Prediction",
-            description: "Developed a machine learning modelto predict customer churn for a telecom company.",
-            technologies: ["Python", "Scikit-learn", "Pandas", "Matplotlib"],
-            imageUrl: "https://via.placeholder.com/400x300?text=Churn+Prediction", // Placeholder
+            title: "Traffic Flow Optimization Using Deep Reinforcement Learning Enabled Traffic Lights Network",
+            description: `As a multidisciplinary team of Computer Science, Electrical Engineering, and Industrial Engineering students at KFUPM, our senior project tackled real-world traffic congestion. This capstone initiative integrated our diverse expertise to develop an intelligent traffic light network powered by Deep Reinforcement Learning (DRL). Leveraging Python for core development, we utilized YOLO for real-time object detection from camera feeds and Streamlit to create an intuitive interface for visualizing our system's performance. Our DRL model learned to dynamically adapt to real-time traffic conditions simulated using SUMO (Simulation of Urban MObility), optimizing flow by significantly reducing wait times and maximizing throughput. Arduino played a role in physically implementing or simulating the traffic light control aspect.\n\nOur comprehensive solution encompassed the entire pipeline: processing camera feeds using Computer Vision with YOLO, extracting crucial traffic data, feeding this information to our sophisticated DRL model (developed in Python and trained within the SUMO environment), and subsequently updating intersection traffic light states (potentially controlled or simulated via Arduino). The Streamlit application provided a user-friendly way to monitor the system's effectiveness. This approach improves vehicular movement and promises to lower emissions and enhance overall urban mobility.\n\nThis project underscores our ability to collaborate effectively across disciplines and apply cutting-edge technologies to solve tangible problems. Demonstrating proficiency in Computer Vision (YOLO), Deep Reinforcement Learning (in Python, simulated with SUMO), and rapid application development (Streamlit), with potential hardware interfacing (Arduino), our system lays a robust foundation for future advancements in smart city technologies.`,
+            technologies: ["Python", "YOLO", "Streamlit", "SUMO", "Arduino", "Deep Reinforcement Learning", "Computer Vision"],
+            imageUrl: "/capstone.png",
+            videoUrl: "https://www.youtube.com/watch?v=eSZWBXlDl3c&ab_channel=AbdulhadiZubailah",
+            team: [
+                { name: "Tariq Madkhali", role: "Computer Scientist", twitter: "", linkedin: "https://www.linkedin.com/in/tariq-madkhali-a69815198/" },
+                { name: "Mohammed Almutlaq", role: "Electrical Engineer", twitter: "", linkedin: "https://www.linkedin.com/in/mohammed-almutlaq-38a2b221b/" },
+                { name: "Abdulrahman Hajjar", role: "Electrical Engineer", twitter: "", linkedin: "https://www.linkedin.com/in/hajjarabdulrahman/" },
+                { name: "Abdulrahman Alajlan", role: "Industrial Engineer", twitter: "", linkedin: "https://www.linkedin.com/in/abdulrahman-alajlan-capm%C2%AE%EF%B8%8F-b0a383275/" },
+                { name: "Abdulmohsen Al-Eisa", role: "Industrial Engineer", twitter: "", linkedin: "https://www.linkedin.com/in/abdulmohsen-al-eisa-022434257/" }
+            ]
         },
         {
-            title: "Project 2:Sales Forecasting",
-            description: "Built a time series model to forecast future sales trends.",
-            technologies: ["R", "Prophet", "ggplot2"],
-            imageUrl: "https://via.placeholder.com/400x300?text=Sales+Forecasting", // Placeholder
-        },
-        // Add more data science projects
+            title: "Firefly: Autonomous UAV Swarms for Wildfire Combat Utilizing Swarm Intelligence",
+            description: `This project is an autonomous UAV swarm system designed for wildfire combat using swarm intelligence and multi-agent deep reinforcement learning. The project addresses the significant financial and logistical challenges associated with traditional firefighting methods, which incur substantial damage costs (estimated between $394 billion and $893 billion) and high indirect aerial costs (ranging from $9,000 to $63,000 per hour). The core idea is to leverage a team of unmanned aerial vehicles (UAVs) that can autonomously coordinate their actions to extinguish wildfires more efficiently and effectively. The current work focuses on demonstrating the feasibility of this approach in a simplified, discrete environment, with the ultimate goal of scaling it up to realistic 3D physics-based simulations.\n\nThe methodology employed in FireFly utilizes a reinforcement learning (RL)-based system with two key elements: a simulation environment that accurately models fire spread dynamics and agent movement, and a neural network designed to learn optimal firefighting strategies for the agents within this environment. The observation space for each agent in the multi-agent system includes a layered volume representing crucial environmental information, such as the state of the fire cells, other agent positions, static barriers, vegetation density, and wind velocity. The agents' action space consists of six directional movements and the ability to perform a fire-retardant splash. The underlying architecture incorporates a 3-layered convolutional neural network (CNN) that processes the features of the observation volume to produce action-log probabilities and a value function. The training process involves parallelizing the RLlib training of the agents on a cluster of CPUs and GPUs to efficiently determine the best combination of high-reward definitions that minimize the number of burnt trees.\n\nThe initial results from the discrete environment are promising, indicating that the multi-agent system is capable of achieving a decent reward, with the crucial value function able to capture variance in the observations, leading to highly explained variance and superior agent performance compared to a random agent. Future work will focus on extending this research to partial observability scenarios and more complex, realistic 3D physics-based simulations, potentially using the KAUST Aerial Robotics and Drone Academy (KARDC) infrastructure. The long-term vision is to develop a robust multi-agent system that can significantly improve wildfire suppression efforts by enabling faster, more coordinated, and ultimately more effective interventions.\n\nNote: We developed both the environment and the agent training system for this project as part of the KAUST Academy capstone program.`,
+            technologies: [
+                "Python", "Reinforcement Learning", "AgileRL", "PettingZoo", "SuperSuit", "Torch", "NumPy", "tqdm", "fastrand", "Gymnasium", "imageio", "Pillow", "PyYAML", "wandb"
+            ],
+            imageUrl: "/firefly.png",
+            videoUrl: "/swarm.mp4",
+            team: [
+                { name: "Abderrahmane Balah", role: "Computer Scientist", twitter: "", linkedin: "https://www.linkedin.com/in/abderrahmane-balah/" },
+                { name: "Mohammed Abushwarib", role: "Computer Scientist", twitter: "", linkedin: "https://www.linkedin.com/in/m-abushawarib/" },
+                { name: "Ahmad Alkhabbaz", role: "Software Engineer", twitter: "", linkedin: "https://www.linkedin.com/in/ahmad-alkhabbaz/" },
+                { name: "Muhab Abubaker", role: "Software Engineer", twitter: "", linkedin: "https://www.linkedin.com/in/muhab-abubaker2001/" }
+            ],
+            date: "June 2024 - August 2024",
+            place: "KAUST Academy"
+        }
     ];
 
     const skillCategories = [
@@ -1047,7 +1040,7 @@ Our team's dedication and collaborative spirit led us to achieve 3rd place in th
         {
             title: "Tools & Platforms",
             icon: <Layers3 className="w-6 h-6" />,
-            skills: ["Docker", "Tableau", "MySQL", "Neo4j"]
+            skills: ["Docker", "Tableau", "MySQL", "Neo4j", "Power BI"]
         },
         {
             title: "Python Frameworks",
@@ -1146,31 +1139,31 @@ Our team's dedication and collaborative spirit led us to achieve 3rd place in th
                         {/* Second Column: Other Music Projects */}
                         {project.spotifyUrl && project.youtubeUrl && (
                             <div className="space-y-6">
-                                <div className="aspect-w-16 aspect-h-9">
-                                    <iframe
-                                        src={project.spotifyUrl}
-                                        width="100%"
-                                        height="100%"
-                                        frameBorder="0"
-                                        allowFullScreen
-                                        allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-                                        loading="lazy"
-                                        className="rounded-lg shadow-lg"
-                                    ></iframe>
-                                </div>
-                                <div className="aspect-w-16 aspect-h-9">
-                                    <iframe
-                                        src={project.youtubeUrl}
-                                        width="100%"
-                                        height="100%"
-                                        frameBorder="0"
-                                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                                        allowFullScreen
-                                        loading="lazy"
-                                        className="rounded-lg shadow-lg"
-                                    ></iframe>
-                                </div>
+                            <div className="aspect-w-16 aspect-h-9">
+                                <iframe
+                                    src={project.spotifyUrl}
+                                    width="100%"
+                                    height="100%"
+                                    frameBorder="0"
+                                    allowFullScreen
+                                    allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                                    loading="lazy"
+                                    className="rounded-lg shadow-lg"
+                                ></iframe>
                             </div>
+                            <div className="aspect-w-16 aspect-h-9">
+                                <iframe
+                                    src={project.youtubeUrl}
+                                    width="100%"
+                                    height="100%"
+                                    frameBorder="0"
+                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                                    allowFullScreen
+                                    loading="lazy"
+                                    className="rounded-lg shadow-lg"
+                                ></iframe>
+                            </div>
+                        </div>
                         )}
                     </div>
                 ))}
@@ -1204,18 +1197,49 @@ Our team's dedication and collaborative spirit led us to achieve 3rd place in th
                                         <Users className="w-4 h-4" />
                                         Team Project
                                     </span>
-                                    <span className="flex items-center gap-1">
-                                        <Trophy className="w-4 h-4" />
-                                        3rd Place Winner
-                                    </span>
+                                    {project.course && (
+                                        <span className="flex items-center gap-1">
+                                            <BookOpen className="w-4 h-4" />
+                                            {project.course}
+                                        </span>
+                                    )}
+                                    {project.title === "University Gamedev League 2022 Competition" && (
+                                        <span className="flex items-center gap-1">
+                                            <Trophy className="w-4 h-4" />
+                                            3rd Place Winner
+                                        </span>
+                                    )}
                                 </div>
                             </div>
 
-                            <div className="prose prose-invert max-w-none">
-                                <p className="text-gray-300 leading-relaxed">
-                                    {project.description}
-                                </p>
-                            </div>
+                            {project.title === "Death Well Told" ? (
+                                // Special layout for Death Well Told
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                    {/* Left side: Description */}
+                                    <div className="prose prose-invert max-w-none">
+                                        <p className="text-gray-300 leading-relaxed">
+                                            {project.description}
+                                        </p>
+                                    </div>
+                                    {/* Right side: Video */}
+                                    <div className="aspect-w-16 aspect-h-9 rounded-lg overflow-hidden bg-black/20">
+                                        <iframe
+                                            src={project.videoUrl ? `${project.videoUrl.replace('watch?v=', 'embed/')}?autoplay=0` : ''}
+                                            title={`${project.title} Gameplay`}
+                                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                            allowFullScreen
+                                            className="w-full h-full"
+                                        ></iframe>
+                                    </div>
+                                </div>
+                            ) : (
+                                // Default layout for other projects
+                                <div className="prose prose-invert max-w-none">
+                                    <p className="text-gray-300 leading-relaxed">
+                                        {project.description}
+                                    </p>
+                                </div>
+                            )}
 
                             {/* Team Section */}
                             {project.team && project.team.length > 0 && (
@@ -1235,24 +1259,17 @@ Our team's dedication and collaborative spirit led us to achieve 3rd place in th
                                                     <span className="text-sm text-gray-400 block">{member.role}</span>
                                                 </div>
                                                 <div className="flex gap-3">
-                                                    <a 
-                                                        href={member.twitter} 
-                                                        target="_blank" 
-                                                        rel="noopener noreferrer" 
-                                                        className="text-blue-400 hover:text-blue-300 transition-colors"
-                                                        aria-label={`${member.name}'s Twitter`}
-                                                    >
-                                                        <Twitter className="w-5 h-5" />
-                                                    </a>
-                                                    <a 
-                                                        href={member.linkedin} 
-                                                        target="_blank" 
-                                                        rel="noopener noreferrer" 
-                                                        className="text-blue-400 hover:text-blue-300 transition-colors"
-                                                        aria-label={`${member.name}'s LinkedIn`}
-                                                    >
-                                                        <Linkedin className="w-5 h-5" />
-                                                    </a>
+                                                    {member.linkedin && (
+                                                        <a 
+                                                            href={member.linkedin} 
+                                                            target="_blank" 
+                                                            rel="noopener noreferrer" 
+                                                            className="text-blue-400 hover:text-blue-300 transition-colors"
+                                                            aria-label={`${member.name}'s LinkedIn`}
+                                                        >
+                                                            <Linkedin className="w-5 h-5" />
+                                                        </a>
+                                                    )}
                                                 </div>
                                             </div>
                                         ))}
@@ -1260,7 +1277,7 @@ Our team's dedication and collaborative spirit led us to achieve 3rd place in th
                                 </div>
                             )}
 
-                            {/* Games Grid */}
+                            {/* Games Grid for University Gamedev League project */}
                             {project.games && project.games.length > 0 && (
                                 <div className="space-y-4">
                                     <h4 className="text-lg font-semibold text-white flex items-center gap-2">
@@ -1375,37 +1392,127 @@ Our team's dedication and collaborative spirit led us to achieve 3rd place in th
         );
     };
 
-    const renderDataScienceProjects = () => {
+    const renderTechProjects = () => {
         return (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                {dataScienceProjects.map((project, index) => (
+            <div className="space-y-8">
+                {techProjects.map((project, index) => (
                     <motion.div
                         key={index}
                         initial={{ opacity: 0, y: 20 }}
                         whileInView={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: 20 }}  // Add exit animation
+                        exit={{ opacity: 0, y: 20 }}
                         transition={{ duration: 0.5 }}
-                        className="bg-white/5 backdrop-blur-md border border-white/10 shadow-lg transition-transform hover:scale-105"
+                        className="bg-white/5 backdrop-blur-md rounded-xl p-8 border border-white/10 shadow-lg hover:shadow-xl transition-all duration-300"
                     >
-                        <Card className="bg-transparent border-none shadow-none">
-                            <CardHeader>
-                                <CardTitle className="text-xl font-semibold text-white">{project.title}</CardTitle>
-                                <CardDescription className="text-gray-400">{project.description}</CardDescription>
-                            </CardHeader>
-                            {project.imageUrl && (
-                                <img src={project.imageUrl} alt={project.title} className="rounded-t-lg w-full h-auto" />
+                        <div className="space-y-6">
+                            <div className="space-y-2">
+                                <h3 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-400">
+                                    {project.title}
+                                </h3>
+                                <div className="flex items-center gap-4 text-sm text-gray-400">
+                                    {project.date && (
+                                        <span className="flex items-center gap-1">
+                                            <Calendar className="w-4 h-4" />
+                                            {project.date}
+                                        </span>
+                                    )}
+                                    <span className="flex items-center gap-1">
+                                        <Users className="w-4 h-4" />
+                                        Capstone Project
+                                    </span>
+                                    {project.place && (
+                                        <span className="flex items-center gap-1">
+                                            <BookOpen className="w-4 h-4" />
+                                            {project.place}
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                {/* Left: Description */}
+                                <div className="prose prose-invert max-w-none flex-1 w-full">
+                                    <p className="text-gray-300 leading-relaxed text-base whitespace-pre-line">
+                                        {project.description}
+                                    </p>
+                                    <div className="flex flex-wrap gap-3 mt-4">
+                                        {project.technologies.map((tech, idx) => (
+                                            <span 
+                                                key={idx} 
+                                                className="px-4 py-2 rounded-full text-sm bg-white/10 text-gray-300 hover:bg-white/20 transition-colors"
+                                            >
+                                                {tech}
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
+                                {/* Right: YouTube Button above Poster */}
+                                <div className="flex flex-col items-center justify-center w-full min-w-[500px] md:min-w-[600px] gap-6">
+                                    {project.videoUrl && (
+                                        project.videoUrl.endsWith('.mp4') ? (
+                                            <video controls autoPlay loop muted className="rounded-lg w-full max-w-xl shadow-2xl border-2 border-white/20 mb-2">
+                                                <source src={project.videoUrl} type="video/mp4" />
+                                                Your browser does not support the video tag.
+                                            </video>
+                                        ) : (
+                                            <a
+                                                href={project.videoUrl}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="flex items-center gap-3 px-8 py-4 rounded-xl bg-gradient-to-r from-red-600 via-pink-500 to-purple-600 text-white font-bold text-lg shadow-lg hover:from-red-700 hover:to-purple-700 transition-all duration-300 focus:outline-none"
+                                            >
+                                                <Youtube className="w-7 h-7 text-white" />
+                                                Watch Project Demo on YouTube
+                                            </a>
+                                        )
+                                    )}
+                                    {project.imageUrl && (
+                                        <a href={project.imageUrl} target="_blank" rel="noopener noreferrer" className="focus:outline-none">
+                                            <img src={project.imageUrl} alt={project.title} className="rounded-lg w-full max-w-xl shadow-2xl border-2 border-white/20 cursor-zoom-in transition-transform hover:scale-105" />
+                                        </a>
+                                    )}
+                                </div>
+                            </div>
+                            {/* Team Section for Tech Projects - now below the grid, full width */}
+                            {project.team && project.team.length > 0 && (
+                                <div className="mt-8 space-y-4 w-full">
+                                    <h4 className="text-lg font-semibold text-white flex items-center gap-2">
+                                        <Users className="w-5 h-5 text-purple-400" />
+                                        Team Members
+                                    </h4>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        {project.team.map((member, idx) => (
+                                            <div 
+                                                key={idx} 
+                                                className="flex items-center justify-between p-3 bg-white/5 rounded-lg border border-white/10 hover:bg-white/10 transition-colors"
+                                            >
+                                                <div className="space-y-1">
+                                                    <span className="text-white font-medium">{member.name}</span>
+                                                    <span className="text-sm text-gray-400 block">{member.role}</span>
+                                                </div>
+                                                <div className="flex gap-3">
+                                                    {member.linkedin && (
+                                                        <a 
+                                                            href={member.linkedin} 
+                                                            target="_blank" 
+                                                            rel="noopener noreferrer" 
+                                                            className="text-blue-400 hover:text-blue-300 transition-colors"
+                                                            aria-label={`${member.name}'s LinkedIn`}
+                                                        >
+                                                            <Linkedin className="w-5 h-5" />
+                                                        </a>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
                             )}
-                            <CardContent>
-                                <p className="text-gray-300">
-                                    <strong>Technologies:</strong> {project.technologies.join(', ')}
-                                </p>
-                            </CardContent>
-                        </Card>
+                        </div>
                     </motion.div>
                 ))}
             </div>
         );
-    }
+    };
 
     const renderSkillsAndCertificates = () => {
         return (
@@ -1495,14 +1602,8 @@ Our team's dedication and collaborative spirit led us to achieve 3rd place in th
         <section id="projects" className="py-16">
             <div className="container mx-auto px-4">
                 <h2 className="text-3xl font-bold text-center text-white mb-12">Project Portfolio</h2>
-                <Tabs defaultValue="music" className="w-full">
-                    <TabsList className="grid w-full grid-cols-4 bg-white/5 backdrop-blur-md border border-white/10 rounded-full p-1">
-                        <TabsTrigger 
-                            value="music" 
-                            className="text-white data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-blue-500 data-[state=active]:text-white rounded-full flex items-center justify-center"
-                        >
-                            <Music className="w-4 h-4 mr-2" /> Music
-                        </TabsTrigger>
+                <Tabs defaultValue="games" className="w-full">
+                    <TabsList className="grid w-full grid-cols-3 bg-white/5 backdrop-blur-md border border-white/10 rounded-full p-1">
                         <TabsTrigger 
                             value="games" 
                             className="text-white data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-blue-500 data-[state=active]:text-white rounded-full flex items-center justify-center"
@@ -1516,16 +1617,15 @@ Our team's dedication and collaborative spirit led us to achieve 3rd place in th
                             <BookOpen className="w-4 h-4 mr-2" /> Educator
                         </TabsTrigger>
                         <TabsTrigger 
-                            value="dataScience" 
+                            value="tech" 
                             className="text-white data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-blue-500 data-[state=active]:text-white rounded-full flex items-center justify-center"
                         >
-                            <BrainCircuit className="w-4 h-4 mr-2" /> Data Science
+                            <BrainCircuit className="w-4 h-4 mr-2" /> Tech
                         </TabsTrigger>
                     </TabsList>
-                    <TabsContent value="music" className="mt-6">{renderMusicProjects()}</TabsContent>
                     <TabsContent value="games" className="mt-6">{renderGameProjects()}</TabsContent>
                     <TabsContent value="educator" className="mt-6">{renderEducatorProjects()}</TabsContent>
-                    <TabsContent value="dataScience" className="mt-6">{renderDataScienceProjects()}</TabsContent>
+                    <TabsContent value="tech" className="mt-6">{renderTechProjects()}</TabsContent>
                 </Tabs>
             </div>
         </section>
@@ -1537,90 +1637,96 @@ const ContactSection = () => {
     return (
         <section id="contact" className="py-16">
             <div className="container mx-auto px-4">
-                <h2 className="text-3xl font-bold text-center text-white mb-12">Contact Me</h2>
-                <div className="flex flex-col md:flex-row justify-center items-center gap-8">
-                    {/* Contact Form (Placeholder) */}
-                    <div className="bg-white/5 backdrop-blur-md rounded-xl p-6 shadow-lg w-full max-w-md">
-                        <h3 className="text-xl font-semibold text-white mb-4">Send a Message</h3>
-                        <p className="text-gray-400 mb-6">
-                            Feel free to reach out to me via email or connect with me on social media.
-                        </p>
-                        {/* Placeholder form - replace with actual form if needed */}
-                        <form className="space-y-4">
-                            <div>
-                                <label htmlFor="name" className="block text-sm font-medium text-gray-300">Name</label>
-                                <input
-                                    type="text"
-                                    id="name"
-                                    placeholder="Your Name"
-                                    className="mt-1 w-full bg-black/20 border border-white/10 rounded-md py-2 px-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                    disabled // Placeholder
-                                />
-                            </div>
-                            <div>
-                                <label htmlFor="email" className="block text-sm font-medium text-gray-300">Email</label>
-                                <input
-                                    type="email"
-                                    id="email"
-                                    placeholder="Your Email"
-                                    className="mt-1 w-full bg-black/20 border border-white/10 rounded-md py-2 px-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                    disabled // Placeholder
-                                />
-                            </div>
-                            <div>
-                                <label htmlFor="message" className="block text-sm font-medium text-gray-300">Message</label>
-                                <textarea
-                                    id="message"
-                                    placeholder="Your Message"
-                                    rows={4}
-                                    className="mt-1 w-full bg-black/20 border border-white/10 rounded-md py-2 px-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                                    disabled // Placeholder
-                                ></textarea>
-                            </div>
-                            <Button
-                                type="submit"
-                                className="w-full bg-gradient-to-r from-purple-500 to-blue-500 text-white py-3 rounded-md hover:from-purple-600 hover:to-blue-600 transition-colors"
-                                disabled // Placeholder
+                <motion.h2 
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5 }}
+                    className="text-4xl font-bold text-center mb-12 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400"
+                >
+                    Let's Connect
+                </motion.h2>
+                <motion.div 
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    whileInView={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.5, delay: 0.2 }}
+                    className="bg-white/5 backdrop-blur-md rounded-2xl p-12 shadow-lg w-full mx-auto border border-white/10 hover:border-white/20 transition-all duration-300"
+                >
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+                        {/* Left Side: Description */}
+                        <motion.div 
+                            initial={{ opacity: 0, x: -20 }}
+                            whileInView={{ opacity: 1, x: 0 }}
+                            transition={{ duration: 0.5, delay: 0.4 }}
+                            className="flex flex-col justify-center"
+                        >
+                            <motion.p 
+                                initial={{ opacity: 0 }}
+                                whileInView={{ opacity: 1 }}
+                                transition={{ duration: 0.5, delay: 0.6 }}
+                                className="text-gray-300 text-3xl mb-8 font-light leading-relaxed tracking-wide"
                             >
-                                Send Message (Placeholder)
-                            </Button>
-                        </form>
-                    </div>
+                                Want to know more about me, collaborate on a project, utilize one of my services, or simply to say hello?
+                            </motion.p>
+                            <motion.p
+                                initial={{ opacity: 0 }}
+                                whileInView={{ opacity: 1 }}
+                                transition={{ duration: 0.5, delay: 0.8 }}
+                                className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-400 text-4xl font-medium leading-tight tracking-tight"
+                            >
+                                Drop me a line and I'll get back as soon as possible.
+                            </motion.p>
+                        </motion.div>
 
-                    {/* Contact Information */}
-                    <div className="bg-white/5 backdrop-blur-md rounded-xl p-6 shadow-lg w-full max-w-md">
-                        <h3 className="text-xl font-semibold text-white mb-4">Contact Information</h3>
-                        <ul className="space-y-4">
-                            <li className="flex items-center">
-                                <Mail className="w-5 h-5 mr-3 text-gray-400" />
-                                <span className="text-gray-300">Email: example@example.com</span>
-                            </li>
-                            <li className="flex items-center">
-                                <Github className="w-5 h-5 mr-3 text-gray-400" />
-                                <a
-                                    href="https://github.com/yourusername" // Replace with your GitHub username
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-blue-400 hover:text-blue-300 hover:underline"
-                                >
-                                    GitHub/yourusername
-                                </a>
-                            </li>
-                            <li className="flex items-center">
-                                <Linkedin className="w-5 h-5 mr-3 text-gray-400" />
-                                <a
-                                    href="https://linkedin.com/in/abdulhadi-zubailah"  // Replace with your LinkedIn profile URL
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-blue-400 hover:text-blue-300 hover:underline"
-                                >
-                                    Linkedin: Abdulhadi Zubailah
-                                </a>
-                            </li>
-                            {/* Add more contact methods as needed */}
-                        </ul>
+                        {/* Right Side: Contact Links */}
+                        <motion.div 
+                            initial={{ opacity: 0, x: 20 }}
+                            whileInView={{ opacity: 1, x: 0 }}
+                            transition={{ duration: 0.5, delay: 0.6 }}
+                            className="space-y-6"
+                        >
+                            <a
+                                href="mailto:hadi2009z@gmail.com"
+                                className="group flex items-center gap-6 p-6 rounded-xl bg-white/5 hover:bg-white/10 transition-all duration-300"
+                            >
+                                <div className="p-4 rounded-lg bg-gradient-to-br from-purple-500/20 to-blue-500/20 group-hover:from-purple-500/30 group-hover:to-blue-500/30 transition-all">
+                                    <Mail className="w-8 h-8 text-purple-400" />
+                            </div>
+                            <div>
+                                    <p className="text-sm text-gray-400">Email</p>
+                                    <p className="text-white group-hover:text-blue-400 transition-colors text-xl">hadi2009z@gmail.com</p>
+                            </div>
+                            </a>
+                            <a
+                                href="https://linkedin.com/in/abdulhadi-zubailah"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="group flex items-center gap-6 p-6 rounded-xl bg-white/5 hover:bg-white/10 transition-all duration-300"
+                            >
+                                <div className="p-4 rounded-lg bg-gradient-to-br from-blue-500/20 to-blue-600/20 group-hover:from-blue-500/30 group-hover:to-blue-600/30 transition-all">
+                                    <Linkedin className="w-8 h-8 text-blue-400" />
                     </div>
-                </div>
+                                <div>
+                                    <p className="text-sm text-gray-400">LinkedIn</p>
+                                    <p className="text-white group-hover:text-blue-400 transition-colors text-xl">Abdulhadi Zubailah</p>
+                                </div>
+                            </a>
+                            <a
+                                href="https://github.com/Cuphadi"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="group flex items-center gap-6 p-6 rounded-xl bg-white/5 hover:bg-white/10 transition-all duration-300"
+                            >
+                                <div className="p-4 rounded-lg bg-gradient-to-br from-gray-500/20 to-gray-600/20 group-hover:from-gray-500/30 group-hover:to-gray-600/30 transition-all">
+                                    <Github className="w-8 h-8 text-gray-400" />
+                                </div>
+                                <div>
+                                    <p className="text-sm text-gray-400">GitHub</p>
+                                    <p className="text-white group-hover:text-blue-400 transition-colors text-xl">Cuphadi</p>
+                                </div>
+                            </a>
+                        </motion.div>
+                    </div>
+                </motion.div>
             </div>
         </section>
     );
@@ -1630,15 +1736,15 @@ const ContactSection = () => {
 const ServicesSection = () => {
     const services = [
         {
-            title: "Music Production/Composition",
+            title: "Music Composition",
             icon: <Music className="w-8 h-8" />,
-            description: "Professional music production and composition services for various media.",
+            description: "Professional music composition services for various media. Mostly Orchestral/Fantasy pieces with emphasis on piano.",
             gradient: "from-purple-500 to-pink-500"
         },
         {
             title: "Private Teaching Sessions",
             icon: <Users className="w-8 h-8" />,
-            description: "One-on-one tutoring in programming, music, and game design.",
+            description: "One-on-one tutoring in Python, AI Theory/Applications, and more in the realm of Computer Science & Math.",
             gradient: "from-blue-500 to-cyan-500"
         },
         {
@@ -1723,7 +1829,7 @@ const SkillsAndCertificates = () => {
         {
             title: "Tools & Platforms",
             icon: <Layers3 className="w-6 h-6" />,
-            skills: ["Docker", "Tableau", "MySQL", "Neo4j"]
+            skills: ["Docker", "Tableau", "MySQL", "Neo4j", "Power BI"]
         },
         {
             title: "Python Frameworks",
@@ -1794,30 +1900,30 @@ const SkillsAndCertificates = () => {
             type: "image"
         },
         {
-            title: "Teaching Excellence Award",
-            description: "Awarded for outstanding performance in teaching and mentoring students in programming and AI courses.",
-            date: "December 2024",
+            title: "Peer Tutoring Program Excellence Award",
+            description: "Recognized as oine of the best students in the Peer Tutoring program for the Python & C programming languages course.",
+            date: "January 2024",
             image: "/awards/Tutor Award.jpeg",
             type: "image"
         },
         {
-            title: "Innovation & Entrepreneurship Service Award",
-            description: "Recognized for developing innovative teaching methods and tools in computer science education.",
-            date: "March 2025",
+            title: "I&E Club Years of Service Award",
+            description: "Awarded for 5 years of service with the club upper management.",
+            date: "May 2024",
             image: "/awards/I&E Service Award.jpeg",
             type: "image"
         },
         {
-            title: "Advanced Teaching Assistant",
-            description: "Awarded for exceptional performance as a teaching assistant at KFUPM.",
-            date: "2025",
+            title: "KAUST Academy AI Program TA Recognition",
+            description: "Awarded for exceptional performance as a teaching assistant at KAUST Academy AI Advanced Stage.",
+            date: "February 2025",
             image: "/awards/Abdulhadi Zubailah - 2025 Advanced TA.png",
             type: "image"
         },
         {
-            title: "Google Developer Student Club",
+            title: "Google Developer Student Club Recognition",
             description: "Recognized for leadership and contributions to the Google Developer Student Club at KFUPM.",
-            date: "2024",
+            date: "May 2024",
             image: "/awards/GDSC.png",
             type: "image"
         }
