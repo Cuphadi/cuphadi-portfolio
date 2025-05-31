@@ -1971,7 +1971,7 @@ const SkillsAndCertificates = () => {
         </div>
     );
 
-    const AwardsCarousel = () => {
+    const renderAwards = () => {
         const [emblaRef, emblaApi] = useEmblaCarousel({
             align: "start",
             loop: true,
@@ -2118,7 +2118,7 @@ const SkillsAndCertificates = () => {
                 {renderCertificates()}
 
                 {/* Awards */}
-                <AwardsCarousel />
+                {renderAwards()}
             </div>
         </section>
     );
