@@ -1698,8 +1698,8 @@ const ContactSection = () => {
                             </a>
                             <a
                                 href="https://linkedin.com/in/abdulhadi-zubailah"
-                                target="_blank"
-                                rel="noopener noreferrer"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
                                 className="group flex items-center gap-6 p-6 rounded-xl bg-white/5 hover:bg-white/10 transition-all duration-300"
                             >
                                 <div className="p-4 rounded-lg bg-gradient-to-br from-blue-500/20 to-blue-600/20 group-hover:from-blue-500/30 group-hover:to-blue-600/30 transition-all">
@@ -1712,17 +1712,17 @@ const ContactSection = () => {
                             </a>
                             <a
                                 href="https://github.com/Cuphadi"
-                                target="_blank"
-                                rel="noopener noreferrer"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
                                 className="group flex items-center gap-6 p-6 rounded-xl bg-white/5 hover:bg-white/10 transition-all duration-300"
                             >
                                 <div className="p-4 rounded-lg bg-gradient-to-br from-gray-500/20 to-gray-600/20 group-hover:from-gray-500/30 group-hover:to-gray-600/30 transition-all">
                                     <Github className="w-8 h-8 text-gray-400" />
-                                </div>
+                    </div>
                                 <div>
                                     <p className="text-sm text-gray-400">GitHub</p>
                                     <p className="text-white group-hover:text-blue-400 transition-colors text-xl">Cuphadi</p>
-                                </div>
+                </div>
                             </a>
                         </motion.div>
                     </div>
